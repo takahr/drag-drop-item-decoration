@@ -3,7 +3,6 @@ package com.kiguruming.recyclerview.dragdrop;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
-import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.Gravity;
@@ -15,8 +14,8 @@ import android.widget.ImageView;
 /**
  * @author takahr@gmail.com
  */
-public class DragDropLinearLayoutManager extends LinearLayoutManager implements RecyclerView.OnItemTouchListener {
-	private final static String TAG = DragDropLinearLayoutManager.class.getSimpleName();
+public class DragDropController implements RecyclerView.OnItemTouchListener {
+	private final static String TAG = DragDropController.class.getSimpleName();
 
 	public static interface OnItemDragDropListener {
 		void onItemDrag(RecyclerView parent, View view, int position, long id);
@@ -26,8 +25,6 @@ public class DragDropLinearLayoutManager extends LinearLayoutManager implements 
 
 		void moveItem(int fromPosition, int toPosition);
 	}
-
-	private RecyclerView mRecyclerView;
 
 	private boolean mDraggingEnabled = true;
 
@@ -43,39 +40,17 @@ public class DragDropLinearLayoutManager extends LinearLayoutManager implements 
 
 	private OnItemDragDropListener mItemDragDropListener;
 
-	public DragDropLinearLayoutManager(Context context) {
-		super(context);
-	}
-
-	public DragDropLinearLayoutManager(Context context, int orientation, boolean reverseLayout) {
-		super(context, orientation, reverseLayout);
-	}
-
 	public void setOnItemDragDropListener(OnItemDragDropListener listener) {
 		mItemDragDropListener = listener;
 	}
 
 	@Override
-	public void onAttachedToWindow(RecyclerView view) {
-		super.onAttachedToWindow(view);
-		view.addOnItemTouchListener(this);
-		mRecyclerView = view;
-	}
-
-	@Override
-	public void onDetachedFromWindow(RecyclerView view, RecyclerView.Recycler recycler) {
-		super.onDetachedFromWindow(view, recycler);
-		view.removeOnItemTouchListener(this);
-		mRecyclerView = null;
-	}
-
-	@Override
 	public boolean onInterceptTouchEvent(RecyclerView rv, MotionEvent ev) {
-		if (!mDraggingEnabled || mRecyclerView == null) {
+		if (!mDraggingEnabled || rv == null) {
 			return false;
 		}
 
-		final RecyclerView.Adapter adapter = mRecyclerView.getAdapter();
+		final RecyclerView.Adapter adapter = rv.getAdapter();
 		if (adapter == null) {
 			return false;
 		}
@@ -89,38 +64,43 @@ public class DragDropLinearLayoutManager extends LinearLayoutManager implements 
 		final int x = (int) ev.getX();
 		final int y = (int) ev.getY();
 
-		if (mDragView == null|| !mDraggingEnabled || mRecyclerView == null) {
+		if (mDragView == null|| !mDraggingEnabled || rv == null) {
 			return;
 		}
 
-		final RecyclerView.Adapter adapter = mRecyclerView.getAdapter();
+		final RecyclerView.Adapter adapter = rv.getAdapter();
 		if (adapter == null) {
 			return;
 		}
+
+        final RecyclerView.LayoutManager layoutManager = rv.getLayoutManager();
+        if (layoutManager == null) {
+            return;
+        }
 
 		switch (action) {
 			case MotionEvent.ACTION_DOWN:
 				break;
 			case MotionEvent.ACTION_MOVE:
-				inDragging(0, y);
+				inDragging(rv, 0, y);
 				break;
 			case MotionEvent.ACTION_CANCEL:
-				cancelDrag();
+				cancelDrag(rv);
 				break;
 			case MotionEvent.ACTION_UP:
 			default:
 				if (mStartPosition >= 0) {
 					// check if the position is a header/footer
-					final View dropAtView = mRecyclerView.findChildViewUnder(x, y);
+					final View dropAtView = rv.findChildViewUnder(x, y);
 					if (dropAtView != null) {
-						final int dropPosition = getPosition(dropAtView);
+						final int dropPosition = layoutManager.getPosition(dropAtView);
 						final long dropItemId = adapter.getItemId(dropPosition);
-						if (canDrop(dropPosition, dropItemId)) {
-							dropAt(dropPosition);
+						if (canDrop(rv, dropPosition, dropItemId)) {
+							dropAt(rv, dropPosition);
 							break;
 						}
 					}
-					cancelDrag();
+					cancelDrag(rv);
 				}
 				break;
 		}
@@ -129,43 +109,47 @@ public class DragDropLinearLayoutManager extends LinearLayoutManager implements 
 		ev.setAction(MotionEvent.ACTION_CANCEL);
 	}
 
-	private boolean canDrag(View dragItem, int startPosition, long id) {
+	private boolean canDrag(RecyclerView rv, View dragItem, int startPosition, long id) {
 		if (mItemDragDropListener != null) {
-			return mItemDragDropListener.canDrag(mRecyclerView, dragItem, startPosition, id);
+			return mItemDragDropListener.canDrag(rv, dragItem, startPosition, id);
 		}
 
 		return false;
 	}
 
-	private boolean canDrop(int dropPosition, long id) {
+	private boolean canDrop(RecyclerView rv, int dropPosition, long id) {
 		if (mItemDragDropListener != null) {
-			return mItemDragDropListener.canDrop(mRecyclerView, mStartPosition, dropPosition, id);
+			return mItemDragDropListener.canDrop(rv, mStartPosition, dropPosition, id);
 		}
 
 		return false;
 	}
 
-	public void startDrag(View dragItem, int x, int y, int offsetX, int offsetY) {
-		if (dragItem == null || mRecyclerView == null) {
+	public void startDrag(RecyclerView rv, View dragItem, int x, int y, int offsetX, int offsetY) {
+		if (dragItem == null || rv == null) {
 			return;
 		}
 
-		final int startPosition = getPosition(dragItem);
+        final RecyclerView.LayoutManager layoutManager = rv.getLayoutManager();
+        if (layoutManager == null) {
+            return;
+        }
+		final int startPosition = layoutManager.getPosition(dragItem);
 
-		final RecyclerView.Adapter adapter = mRecyclerView.getAdapter();
+		final RecyclerView.Adapter adapter = rv.getAdapter();
 		if (adapter == null) {
 			return;
 		}
 
 		final long id = adapter.getItemId(startPosition);
 
-		if (!canDrag(dragItem, startPosition, id)) {
+		if (!canDrag(rv, dragItem, startPosition, id)) {
 			return;
 		}
 
 		mStartPosition = startPosition;
 		if (mItemDragDropListener != null) {
-			mItemDragDropListener.onItemDrag(mRecyclerView, dragItem, mStartPosition, id);
+			mItemDragDropListener.onItemDrag(rv, dragItem, mStartPosition, id);
 		}
 
 		dragItem.setDrawingCacheEnabled(true);
@@ -192,7 +176,7 @@ public class DragDropLinearLayoutManager extends LinearLayoutManager implements 
 		mWindowParams.format = PixelFormat.TRANSLUCENT;
 		mWindowParams.windowAnimations = 0;
 
-		Context context = mRecyclerView.getContext();
+		Context context = rv.getContext();
 		ImageView v = new ImageView(context);
 		v.setImageBitmap(bitmap);
 
@@ -209,22 +193,22 @@ public class DragDropLinearLayoutManager extends LinearLayoutManager implements 
 		dragItem.invalidate(); // We have not changed anything else.
 	}
 
-	private void inDragging(int x, int y) {
-		if (mRecyclerView == null) {
+	private void inDragging(RecyclerView rv, int x, int y) {
+		if (rv == null) {
 			return;
 		}
 
-		final RecyclerView.Adapter adapter = mRecyclerView.getAdapter();
+		final RecyclerView.Adapter adapter = rv.getAdapter();
 		if (adapter == null) {
 			return;
 		}
 
-		final View currentView = mRecyclerView.findChildViewUnder(x, y);
-		final int currentPosition = mRecyclerView.getChildPosition(currentView);
+		final View currentView = rv.findChildViewUnder(x, y);
+		final int currentPosition = rv.getChildPosition(currentView);
 		final long id = adapter.getItemId(currentPosition);
 
 		if (mPlaceholderPosition != currentPosition && currentPosition >= 0) {
-			if (canDrop(currentPosition, id)) {
+			if (canDrop(rv, currentPosition, id)) {
 				if (mPlaceholderPosition >= 0 && currentPosition >= 0) {
 					Log.d(TAG, String.format("moveView %d -> %d", mPlaceholderPosition, currentPosition));
 					moveItem(mPlaceholderPosition, currentPosition);
@@ -242,8 +226,8 @@ public class DragDropLinearLayoutManager extends LinearLayoutManager implements 
 		mWm.updateViewLayout(mDragView, layoutParams);
 	}
 
-	private void dropAt(int dropPosition) {
-		if (mRecyclerView == null) {
+	private void dropAt(RecyclerView rv, int dropPosition) {
+		if (rv == null) {
 			return;
 		}
 
@@ -254,16 +238,16 @@ public class DragDropLinearLayoutManager extends LinearLayoutManager implements 
 		mWm.removeView(mDragView);
 		mDragView.setImageDrawable(null);
 		mDragView = null;
-		showItemView(dropPosition);
+		showItemView(rv, dropPosition);
 
 		if (mItemDragDropListener != null) {
-			mItemDragDropListener.onItemDrop(mRecyclerView, mStartPosition, dropPosition, mDragItemId);
+			mItemDragDropListener.onItemDrop(rv, mStartPosition, dropPosition, mDragItemId);
 		}
 	}
 
-	private void cancelDrag() {
+	private void cancelDrag(RecyclerView rv) {
 		moveItem(mPlaceholderPosition, mStartPosition);
-		showItemView(mStartPosition);
+		showItemView(rv, mStartPosition);
 		mStartPosition = -1;
 		mDragItemId = -1;
 		mWm.removeView(mDragView);
@@ -277,10 +261,17 @@ public class DragDropLinearLayoutManager extends LinearLayoutManager implements 
 		}
 	}
 
-	private void showItemView(int position) {
-		for (int i = 0; i < getChildCount(); i++) {
-			final View childView = getChildAt(i);
-			final int childPosition = getPosition(childView);
+	private void showItemView(RecyclerView rv, int position) {
+        if (rv == null) {
+            return;
+        }
+        final RecyclerView.LayoutManager layoutManager = rv.getLayoutManager();
+        if (layoutManager == null) {
+            return;
+        }
+		for (int i = 0; i < layoutManager.getChildCount(); i++) {
+			final View childView = layoutManager.getChildAt(i);
+			final int childPosition = layoutManager.getPosition(childView);
 			if (position == childPosition) {
 				childView.setVisibility(View.VISIBLE);
 			}

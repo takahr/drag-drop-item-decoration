@@ -2,21 +2,23 @@ package com.kiguruming.recyclerview.dragdrop.example;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.kiguruming.recyclerview.dragdrop.DragDropLinearLayoutManager;
+import com.kiguruming.recyclerview.dragdrop.DragDropController;
 
 /**
  * @author takahr@gmail.com
  */
-public class RecyclerExampleFragment extends Fragment implements View.OnLongClickListener, DragDropLinearLayoutManager.OnItemDragDropListener {
+public class RecyclerExampleFragment extends Fragment implements View.OnLongClickListener, DragDropController.OnItemDragDropListener {
 
 	private RecyclerView mRecyclerView;
 	private ExampleRecyclerAdapter mAdapter;
-	private DragDropLinearLayoutManager mLayoutManager;
+	private LinearLayoutManager mLayoutManager;
+    private DragDropController mDragDropController;
 
 	public RecyclerExampleFragment() {
 	}
@@ -28,15 +30,18 @@ public class RecyclerExampleFragment extends Fragment implements View.OnLongClic
 		mRecyclerView = (RecyclerView) root.findViewById(R.id.recycler);
 		mRecyclerView.setHasFixedSize(true);
 
-		mLayoutManager = new DragDropLinearLayoutManager(getActivity(), DragDropLinearLayoutManager.VERTICAL, false);
-		mLayoutManager.setOnItemDragDropListener(this);
-		mLayoutManager.setDraggingEnabled(true);
+		mLayoutManager = new LinearLayoutManager(getActivity(), LinearLayoutManager.VERTICAL, false);
 		mRecyclerView.setLayoutManager(mLayoutManager);
 
 		mAdapter = new ExampleRecyclerAdapter();
 		mRecyclerView.setAdapter(mAdapter);
-		
-		mAdapter.setOnItemLongClickListener(this);
+
+        mDragDropController = new DragDropController();
+        mDragDropController.setOnItemDragDropListener(this);
+        mDragDropController.setDraggingEnabled(true);
+        mRecyclerView.addOnItemTouchListener(mDragDropController);
+
+        mAdapter.setOnItemLongClickListener(this);
 
 		return root;
 	}
@@ -68,7 +73,7 @@ public class RecyclerExampleFragment extends Fragment implements View.OnLongClic
 
 	@Override
 	public boolean onLongClick(View v) {
-		mLayoutManager.startDrag(v, 0, 0, 0, 0);
+		mDragDropController.startDrag(mRecyclerView, v, 0, 0, 0, 0);
 		return true;
 	}
 }
