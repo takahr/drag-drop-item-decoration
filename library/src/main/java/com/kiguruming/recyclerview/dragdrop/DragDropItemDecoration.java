@@ -1,20 +1,15 @@
 package com.kiguruming.recyclerview.dragdrop;
 
-import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.PixelFormat;
+import android.graphics.Canvas;
 import android.support.v7.widget.RecyclerView;
-import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.WindowManager;
-import android.widget.ImageView;
 
 /**
  * @author takahr@gmail.com
  */
-public class DragDropController implements RecyclerView.OnItemTouchListener {
-	private final static String TAG = DragDropController.class.getSimpleName();
+public class DragDropItemDecoration extends RecyclerView.ItemDecoration implements RecyclerView.OnItemTouchListener {
+	private final static String TAG = DragDropItemDecoration.class.getSimpleName();
 
     public static interface OnItemDragDropListener {
 		void onItemDrag(RecyclerView parent, View view, int position, long id);
@@ -32,10 +27,12 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 	private int mDragPointOffsetX;
 	private int mDragPointOffsetY;
 
+    private int mDragViewX;
+    private int mDragViewY;
+
 	private int mPlaceholderPosition;
 
-	private WindowManager mWm;
-	private ImageView mDragView;
+	private View mDragView;
 
     private MotionEvent mLastDownEvent;
 
@@ -45,7 +42,24 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 		mItemDragDropListener = listener;
 	}
 
-	@Override
+    @Override
+    public void onDraw(Canvas c, RecyclerView parent, RecyclerView.State state) {
+        super.onDraw(c, parent, state);
+    }
+
+    @Override
+    public void onDrawOver(Canvas c, RecyclerView parent, RecyclerView.State state) {
+        super.onDrawOver(c, parent, state);
+
+        if (mDragView != null) {
+            c.save();
+            c.translate(mDragViewX, mDragViewY);
+            mDragView.draw(c);
+            c.restore();
+        }
+    }
+
+    @Override
 	public boolean onInterceptTouchEvent(RecyclerView rv, MotionEvent ev) {
 		if (!mDraggingEnabled || rv == null) {
 			return false;
@@ -85,7 +99,7 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 			case MotionEvent.ACTION_DOWN:
 				break;
 			case MotionEvent.ACTION_MOVE:
-				inDragging(rv, 0, y, 0, (int) ev.getRawY() - y);
+				inDragging(rv, 0, y);
 				break;
 			case MotionEvent.ACTION_CANCEL:
 				cancelDrag(rv);
@@ -159,40 +173,22 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 			mItemDragDropListener.onItemDrag(rv, dragItem, mStartPosition, id);
 		}
 
-		dragItem.setDrawingCacheEnabled(true);
-
-		// Create a copy of the drawing cache so that it does not get recycled
-		// by the framework when the list tries to clean up memory
-		Bitmap bitmap = Bitmap.createBitmap(dragItem.getDrawingCache());
-
 		mDragPointOffsetX = offsetX;
 		mDragPointOffsetY = offsetY;
 
-		WindowManager.LayoutParams mWindowParams = new WindowManager.LayoutParams();
-		mWindowParams.gravity = Gravity.TOP;
-		mWindowParams.x = x - mDragPointOffsetX;
-		mWindowParams.y = y - mDragPointOffsetY;
+        mDragViewX = x - mDragPointOffsetX;
+        mDragViewY = y - mDragPointOffsetY;
 
-		mWindowParams.height = WindowManager.LayoutParams.WRAP_CONTENT;
-		mWindowParams.width = WindowManager.LayoutParams.WRAP_CONTENT;
-		mWindowParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-				| WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-				| WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-				| WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-				| WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS;
-		mWindowParams.format = PixelFormat.TRANSLUCENT;
-		mWindowParams.windowAnimations = 0;
+        final RecyclerView.ViewHolder viewHolder = adapter.createViewHolder(rv, adapter.getItemViewType(mStartPosition));
+        adapter.bindViewHolder(viewHolder, mStartPosition);
 
-		Context context = rv.getContext();
-		ImageView v = new ImageView(context);
-		v.setImageBitmap(bitmap);
+        mDragView = viewHolder.itemView;
 
-		if (mWm == null) {
-			mWm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-		}
-
-		mWm.addView(v, mWindowParams);
-		mDragView = v;
+        // measure & layout
+        final int ws = View.MeasureSpec.makeMeasureSpec(dragItem.getWidth(), View.MeasureSpec.EXACTLY);
+        final int hs = View.MeasureSpec.makeMeasureSpec(dragItem.getHeight(), View.MeasureSpec.EXACTLY);
+        mDragView.measure(ws, hs);
+        mDragView.layout(0, 0, mDragView.getMeasuredWidth(), mDragView.getMeasuredHeight());
 
 		dragItem.setVisibility(View.INVISIBLE);
 		mPlaceholderPosition = mStartPosition;
@@ -200,7 +196,7 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 		dragItem.invalidate(); // We have not changed anything else.
 	}
 
-	private void inDragging(RecyclerView rv, int x, int y, int rawOffsetX, int rawOffsetY) {
+	private void inDragging(RecyclerView rv, int x, int y) {
 		if (rv == null) {
 			return;
 		}
@@ -225,11 +221,8 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 
 		if (mDragView == null) return;
 
-		WindowManager.LayoutParams layoutParams = (WindowManager.LayoutParams)mDragView.getLayoutParams();
-		layoutParams.x = x - mDragPointOffsetX + rawOffsetX;
-		layoutParams.y = y - mDragPointOffsetY + rawOffsetY;
-
-		mWm.updateViewLayout(mDragView, layoutParams);
+		mDragViewX = x - mDragPointOffsetX;
+		mDragViewY = y - mDragPointOffsetY;
 
         if (y - mDragPointOffsetY < rv.getTop() && rv.getScrollState() != RecyclerView.SCROLL_STATE_SETTLING) {
             rv.scrollBy(0, -mDragView.getHeight() / 8);
@@ -248,8 +241,6 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 			moveItem(mPlaceholderPosition, dropPosition);
 		}
 
-		mWm.removeView(mDragView);
-		mDragView.setImageDrawable(null);
 		mDragView = null;
 		showItemView(rv, dropPosition);
 
@@ -263,8 +254,6 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 		showItemView(rv, mStartPosition);
 		mStartPosition = -1;
 		mDragItemId = -1;
-		mWm.removeView(mDragView);
-		mDragView.setImageDrawable(null);
 		mDragView = null;
 	}
 

@@ -9,17 +9,17 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.kiguruming.recyclerview.dragdrop.DragDropController;
+import com.kiguruming.recyclerview.dragdrop.DragDropItemDecoration;
 
 /**
  * @author takahr@gmail.com
  */
-public class RecyclerExampleFragment extends Fragment implements View.OnLongClickListener, DragDropController.OnItemDragDropListener {
+public class RecyclerExampleFragment extends Fragment implements View.OnLongClickListener, DragDropItemDecoration.OnItemDragDropListener {
 
 	private RecyclerView mRecyclerView;
 	private ExampleRecyclerAdapter mAdapter;
 	private LinearLayoutManager mLayoutManager;
-    private DragDropController mDragDropController;
+    private DragDropItemDecoration mDragDropItemDecoration;
 
 	public RecyclerExampleFragment() {
 	}
@@ -37,10 +37,11 @@ public class RecyclerExampleFragment extends Fragment implements View.OnLongClic
 		mAdapter = new ExampleRecyclerAdapter();
 		mRecyclerView.setAdapter(mAdapter);
 
-        mDragDropController = new DragDropController();
-        mDragDropController.setOnItemDragDropListener(this);
-        mDragDropController.setDraggingEnabled(true);
-        mRecyclerView.addOnItemTouchListener(mDragDropController);
+        mDragDropItemDecoration = new DragDropItemDecoration();
+        mDragDropItemDecoration.setOnItemDragDropListener(this);
+        mDragDropItemDecoration.setDraggingEnabled(true);
+        mRecyclerView.addItemDecoration(mDragDropItemDecoration);
+        mRecyclerView.addOnItemTouchListener(mDragDropItemDecoration);
 
         mAdapter.setOnItemLongClickListener(this);
 
@@ -74,10 +75,10 @@ public class RecyclerExampleFragment extends Fragment implements View.OnLongClic
 
 	@Override
 	public boolean onLongClick(View v) {
-        final MotionEvent ev = mDragDropController.getLastDownEvent();
+        final MotionEvent ev = mDragDropItemDecoration.getLastDownEvent();
         final int y = (int) ev.getY();
         final int offsetY = y - v.getTop();
-		mDragDropController.startDrag(mRecyclerView, v, 0, y, 0, offsetY);
+		mDragDropItemDecoration.startDrag(mRecyclerView, v, 0, y, 0, offsetY);
 		return true;
 	}
 }
