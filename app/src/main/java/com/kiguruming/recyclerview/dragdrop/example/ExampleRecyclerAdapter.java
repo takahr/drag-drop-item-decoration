@@ -80,11 +80,7 @@ public class ExampleRecyclerAdapter extends RecyclerView.Adapter<ExampleRecycler
 
 	public void moveItem(int fromPosition, int toPosition) {
 		final Item tmp = mItems.remove(fromPosition);
-		if (fromPosition < toPosition) {
-			mItems.add(toPosition - 1, tmp);
-		} else {
-			mItems.add(toPosition, tmp);
-		}
+        mItems.add(toPosition, tmp);
 		notifyItemMoved(fromPosition, toPosition);
 	}
 
