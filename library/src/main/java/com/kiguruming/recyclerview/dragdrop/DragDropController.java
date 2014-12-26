@@ -4,7 +4,6 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -86,7 +85,7 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 			case MotionEvent.ACTION_DOWN:
 				break;
 			case MotionEvent.ACTION_MOVE:
-				inDragging(rv, 0, y);
+				inDragging(rv, 0, y, 0, (int) ev.getRawY() - y);
 				break;
 			case MotionEvent.ACTION_CANCEL:
 				cancelDrag(rv);
@@ -201,7 +200,7 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 		dragItem.invalidate(); // We have not changed anything else.
 	}
 
-	private void inDragging(RecyclerView rv, int x, int y) {
+	private void inDragging(RecyclerView rv, int x, int y, int rawOffsetX, int rawOffsetY) {
 		if (rv == null) {
 			return;
 		}
@@ -218,7 +217,6 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 		if (mPlaceholderPosition != currentPosition && currentPosition >= 0) {
 			if (canDrop(rv, currentPosition, id)) {
 				if (mPlaceholderPosition >= 0 && currentPosition >= 0) {
-					Log.d(TAG, String.format("moveView %d -> %d", mPlaceholderPosition, currentPosition));
 					moveItem(mPlaceholderPosition, currentPosition);
 				}
 				mPlaceholderPosition = currentPosition;
@@ -228,10 +226,17 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 		if (mDragView == null) return;
 
 		WindowManager.LayoutParams layoutParams = (WindowManager.LayoutParams)mDragView.getLayoutParams();
-		layoutParams.x = x - mDragPointOffsetX;
-		layoutParams.y = y - mDragPointOffsetY;
+		layoutParams.x = x - mDragPointOffsetX + rawOffsetX;
+		layoutParams.y = y - mDragPointOffsetY + rawOffsetY;
 
 		mWm.updateViewLayout(mDragView, layoutParams);
+
+        if (y - mDragPointOffsetY < rv.getTop() && rv.getScrollState() != RecyclerView.SCROLL_STATE_SETTLING) {
+            rv.scrollBy(0, -mDragView.getHeight() / 8);
+        }
+        if (y - mDragPointOffsetY + mDragView.getHeight() > rv.getBottom() && rv.getScrollState() != RecyclerView.SCROLL_STATE_SETTLING) {
+            rv.scrollBy(0, mDragView.getHeight() / 8);
+        }
 	}
 
 	private void dropAt(RecyclerView rv, int dropPosition) {

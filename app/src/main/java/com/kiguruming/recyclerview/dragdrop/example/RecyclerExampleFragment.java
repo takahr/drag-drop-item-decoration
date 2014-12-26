@@ -76,8 +76,7 @@ public class RecyclerExampleFragment extends Fragment implements View.OnLongClic
 	public boolean onLongClick(View v) {
         final MotionEvent ev = mDragDropController.getLastDownEvent();
         final int y = (int) ev.getY();
-        int offsetY = y - v.getTop();
-        offsetY -= (int) ev.getRawY() - y;
+        final int offsetY = y - v.getTop();
 		mDragDropController.startDrag(mRecyclerView, v, 0, y, 0, offsetY);
 		return true;
 	}
