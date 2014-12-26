@@ -17,7 +17,7 @@ import android.widget.ImageView;
 public class DragDropController implements RecyclerView.OnItemTouchListener {
 	private final static String TAG = DragDropController.class.getSimpleName();
 
-	public static interface OnItemDragDropListener {
+    public static interface OnItemDragDropListener {
 		void onItemDrag(RecyclerView parent, View view, int position, long id);
 		void onItemDrop(RecyclerView parent, int startPosition, int endPosition, long id);
 		boolean canDrag(RecyclerView parent, View view, int position, long id);
@@ -38,6 +38,8 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 	private WindowManager mWm;
 	private ImageView mDragView;
 
+    private MotionEvent mLastDownEvent;
+
 	private OnItemDragDropListener mItemDragDropListener;
 
 	public void setOnItemDragDropListener(OnItemDragDropListener listener) {
@@ -55,7 +57,9 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 			return false;
 		}
 
-		return mDragView != null;
+        mLastDownEvent = MotionEvent.obtain(ev);
+
+        return mDragView != null;
 	}
 
 	@Override
@@ -108,6 +112,10 @@ public class DragDropController implements RecyclerView.OnItemTouchListener {
 		// intercept and cancel  event in
 		ev.setAction(MotionEvent.ACTION_CANCEL);
 	}
+
+    public MotionEvent getLastDownEvent() {
+        return mLastDownEvent;
+    }
 
 	private boolean canDrag(RecyclerView rv, View dragItem, int startPosition, long id) {
 		if (mItemDragDropListener != null) {

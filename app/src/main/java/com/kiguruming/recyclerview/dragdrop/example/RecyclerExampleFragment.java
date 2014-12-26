@@ -5,6 +5,7 @@ import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -73,7 +74,11 @@ public class RecyclerExampleFragment extends Fragment implements View.OnLongClic
 
 	@Override
 	public boolean onLongClick(View v) {
-		mDragDropController.startDrag(mRecyclerView, v, 0, 0, 0, 0);
+        final MotionEvent ev = mDragDropController.getLastDownEvent();
+        final int y = (int) ev.getY();
+        int offsetY = y - v.getTop();
+        offsetY -= (int) ev.getRawY() - y;
+		mDragDropController.startDrag(mRecyclerView, v, 0, y, 0, offsetY);
 		return true;
 	}
 }
