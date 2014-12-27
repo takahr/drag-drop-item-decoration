@@ -78,10 +78,19 @@ public class ExampleRecyclerAdapter extends RecyclerView.Adapter<ExampleRecycler
         return mItems.size();
     }
 
-	public void moveItem(int fromPosition, int toPosition) {
+	public int moveItem(int fromPosition, int toPosition) {
 		final Item tmp = mItems.remove(fromPosition);
-        mItems.add(toPosition, tmp);
-		notifyItemMoved(fromPosition, toPosition);
+		if (fromPosition < toPosition) {
+			mItems.add(toPosition - 1, tmp);
+			notifyItemMoved(fromPosition, toPosition - 1);
+
+			return toPosition - 1;
+		} else {
+			mItems.add(toPosition, tmp);
+			notifyItemMoved(fromPosition, toPosition);
+
+			return toPosition;
+		}
 	}
 
 	public void setOnItemLongClickListener(View.OnLongClickListener listener) {

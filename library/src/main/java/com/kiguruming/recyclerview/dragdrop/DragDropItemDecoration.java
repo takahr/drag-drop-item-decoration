@@ -17,7 +17,7 @@ public class DragDropItemDecoration extends RecyclerView.ItemDecoration implemen
 		boolean canDrag(RecyclerView parent, View view, int position, long id);
 		boolean canDrop(RecyclerView parent, int startPosition, int endPosition, long id);
 
-		void moveItem(int fromPosition, int toPosition);
+		int moveItem(int fromPosition, int toPosition);
 	}
 
 	private boolean mDraggingEnabled = true;
@@ -213,9 +213,8 @@ public class DragDropItemDecoration extends RecyclerView.ItemDecoration implemen
 		if (mPlaceholderPosition != currentPosition && currentPosition >= 0) {
 			if (canDrop(rv, currentPosition, id)) {
 				if (mPlaceholderPosition >= 0 && currentPosition >= 0) {
-					moveItem(mPlaceholderPosition, currentPosition);
+					mPlaceholderPosition = moveItem(mPlaceholderPosition, currentPosition);
 				}
-				mPlaceholderPosition = currentPosition;
 			}
 		}
 
@@ -237,12 +236,15 @@ public class DragDropItemDecoration extends RecyclerView.ItemDecoration implemen
 			return;
 		}
 
+		final int droppedPosition;
 		if (mPlaceholderPosition != dropPosition) {
-			moveItem(mPlaceholderPosition, dropPosition);
+			droppedPosition = moveItem(mPlaceholderPosition, dropPosition);
+		} else {
+			droppedPosition = dropPosition;
 		}
 
 		mDragView = null;
-		showItemView(rv, dropPosition);
+		showItemView(rv, droppedPosition);
 
 		if (mItemDragDropListener != null) {
 			mItemDragDropListener.onItemDrop(rv, mStartPosition, dropPosition, mDragItemId);
@@ -250,17 +252,22 @@ public class DragDropItemDecoration extends RecyclerView.ItemDecoration implemen
 	}
 
 	private void cancelDrag(RecyclerView rv) {
-		moveItem(mPlaceholderPosition, mStartPosition);
+		if (mPlaceholderPosition < mStartPosition) {
+			moveItem(mPlaceholderPosition, mStartPosition + 1);
+		} else {
+			moveItem(mPlaceholderPosition, mStartPosition);
+		}
 		showItemView(rv, mStartPosition);
 		mStartPosition = -1;
 		mDragItemId = -1;
 		mDragView = null;
 	}
 
-	private void moveItem(int fromPosition, int toPosition) {
+	private int moveItem(int fromPosition, int toPosition) {
 		if (mItemDragDropListener != null) {
-			mItemDragDropListener.moveItem(fromPosition, toPosition);
+			return mItemDragDropListener.moveItem(fromPosition, toPosition);
 		}
+		return -1;
 	}
 
 	private void showItemView(RecyclerView rv, int position) {

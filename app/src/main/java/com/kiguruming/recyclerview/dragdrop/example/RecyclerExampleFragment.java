@@ -69,8 +69,8 @@ public class RecyclerExampleFragment extends Fragment implements View.OnLongClic
 	}
 
 	@Override
-	public void moveItem(int fromPosition, int toPosition) {
-		mAdapter.moveItem(fromPosition, toPosition);
+	public int moveItem(int fromPosition, int toPosition) {
+		return mAdapter.moveItem(fromPosition, toPosition);
 	}
 
 	@Override
